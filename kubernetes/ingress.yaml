@@ -1,4 +1,4 @@
-# kubernetes/05-ingress.yml (IP-based access version)
+# (IP-based access version)
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
