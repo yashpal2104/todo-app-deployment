@@ -1,0 +1,77 @@
+# This is the name of your GitHub Actions workflow.
+name: Build and Push Docker Images
+
+# This workflow triggers automatically whenever you push code to the 'main' branch.
+on:
+  push:
+    branches: [ "main" ]
+
+# This section defines the jobs that will run.
+jobs:
+  # --- JOB 1: Build and push the Backend Image ---
+  build-and-push-backend:
+    # This job runs on a fresh Ubuntu virtual machine provided by GitHub.
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Check out your repository's code so the workflow can access it.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Docker Buildx for better build features.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 3: Log in to Docker Hub using the secrets you created.
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Step 4: Extract metadata for the Docker image, including tags.
+      # We will tag the image with the unique Git SHA and 'latest'.
+      - name: Extract Docker metadata
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/todo-backend
+
+      # Step 5: Build and push the Docker image to Docker Hub.
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./go-todo-backend  # The directory where the backend's Dockerfile is located
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+
+  # --- JOB 2: Build and push the Frontend Image ---
+  build-and-push-frontend:
+    # This job runs independently and in parallel with the backend job.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Extract Docker metadata
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/todo-frontend
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./go-todo-frontend # The directory for the frontend's Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}

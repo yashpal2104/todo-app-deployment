@@ -1,0 +1,178 @@
+{#
+=======================================================================
+           MASTER TEMPLATE for Frontend + Backend Application
+=======================================================================
+This single file contains all Kubernetes resources for the application.
+
+### HOW TO USE ###
+1. Edit the variables in the "CONFIGURATION" section below.
+2. Generate the final YAML with: j2 app.j2 > kubernetes.yml
+3. Deploy with: kubectl apply -f kubernetes.yml
+=======================================================================
+#}
+
+{# --- CONFIGURATION SECTION --- #}
+{# Edit the values in this section to configure your deployment. #}
+
+{% set backend = {
+    "name": "todo-backend",
+    "replicas": 1,
+    "image": {
+        "repository": "docker0y4sh/todo-backend",
+        "tag": "latest"
+    },
+    "containerPort": 8080,
+    "resources": {
+        "requests": { "memory": "128Mi", "cpu": "100m" },
+        "limits": { "memory": "256Mi", "cpu": "250m" }
+    }
+} %}
+
+{% set frontend = {
+    "name": "todo-frontend",
+    "replicas": 1,
+    "image": {
+        "repository": "docker0y4sh/todo-frontend",
+        "tag": "latest"
+    },
+    "containerPort": 80,
+    "resources": {
+        "requests": { "memory": "32Mi", "cpu": "50m" },
+        "limits": { "memory": "64Mi", "cpu": "100m" }
+    }
+} %}
+
+{# -- Shared Ingress Configuration -- #}
+{% set ingress = {
+    "host": "toptodoapp.tech",
+    "className": "nginx",
+    "tlsSecretName": "toptodoapp-tls-secret",
+    "issuerName": "letsencrypt-staging"
+} %}
+
+{# --- END OF CONFIGURATION --- #}
+
+
+# ==========================================================
+# Kubernetes Resources (Generated from the config above)
+# ==========================================================
+
+# --- Backend Service ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ backend.name }}-service
+spec:
+  selector:
+    app: {{ backend.name }}
+  ports:
+    - protocol: TCP
+      port: {{ backend.containerPort }}
+      targetPort: {{ backend.containerPort }}
+---
+# --- Backend Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ backend.name }}-deployment
+spec:
+  replicas: {{ backend.replicas }}
+  selector:
+    matchLabels:
+      app: {{ backend.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ backend.name }}
+    spec:
+      containers:
+      - name: {{ backend.name }}-container
+        image: "{{ backend.image.repository }}:{{ backend.image.tag }}"
+        imagePullPolicy: Always
+        ports:
+        - containerPort: {{ backend.containerPort }}
+        # Add env vars for database connection here if needed
+        resources:
+          requests:
+            memory: "{{ backend.resources.requests.memory }}"
+            cpu: "{{ backend.resources.requests.cpu }}"
+          limits:
+            memory: "{{ backend.resources.limits.memory }}"
+            cpu: "{{ backend.resources.limits.cpu }}"
+---
+# --- Frontend Service ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ frontend.name }}-service
+spec:
+  selector:
+    app: {{ frontend.name }}
+  ports:
+    - protocol: TCP
+      port: {{ frontend.containerPort }}
+      targetPort: {{ frontend.containerPort }}
+---
+# --- Frontend Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ frontend.name }}-deployment
+spec:
+  replicas: {{ frontend.replicas }}
+  selector:
+    matchLabels:
+      app: {{ frontend.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ frontend.name }}
+    spec:
+      containers:
+      - name: {{ frontend.name }}-container
+        image: "{{ frontend.image.repository }}:{{ frontend.image.tag }}"
+        imagePullPolicy: Always
+        ports:
+        - containerPort: {{ frontend.containerPort }}
+        resources:
+          requests:
+            memory: "{{ frontend.resources.requests.memory }}"
+            cpu: "{{ frontend.resources.requests.cpu }}"
+          limits:
+            memory: "{{ frontend.resources.limits.memory }}"
+            cpu: "{{ frontend.resources.limits.cpu }}"
+---
+# --- Ingress ---
+# This single Ingress directs traffic to both services.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: toptodoapp-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: {{ ingress.issuerName }}
+spec:
+  ingressClassName: {{ ingress.className }}
+  tls:
+  - hosts:
+    - {{ ingress.host }}
+    secretName: {{ ingress.tlsSecretName }}
+  rules:
+  - host: {{ ingress.host }}
+    http:
+      paths:
+      # Path for the API backend
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ backend.name }}-service
+            port:
+              number: {{ backend.containerPort }}
+      # Default path for the frontend
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ frontend.name }}-service
+            port:
+              number: {{ frontend.containerPort }}

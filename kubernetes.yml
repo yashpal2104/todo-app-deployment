@@ -1,0 +1,115 @@
+# ==========================================================
+#          FINAL RENDERED KUBERNETES MANIFEST
+# This file contains all the resources for the To-Do application.
+# You can apply this single file directly with kubectl.
+# ==========================================================
+
+# --- Backend Service ---
+# This creates a stable internal DNS name 'todo-backend-service'
+# so the Ingress can find the backend pods.
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-backend-service
+spec:
+  selector:
+    # This selector must match the labels on the backend pods
+    app: todo-backend
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+---
+# --- Backend Deployment ---
+# This manages the running pods for your Go backend application.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-backend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-backend
+  template:
+    metadata:
+      # This label is used by the Service's selector to find this pod
+      labels:
+        app: todo-backend
+    spec:
+      containers:
+      - name: todo-backend-container
+        image: docker0y4sh/todo-backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+---
+# --- Frontend Service ---
+# This creates a stable internal DNS name 'todo-frontend-service'
+# so the Ingress can find the frontend pods.
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-frontend-service
+spec:
+  selector:
+    # This selector must match the labels on the frontend pods
+    app: todo-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+# --- Frontend Deployment ---
+# This manages the running pods for your Svelte/Nginx frontend.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-frontend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-frontend
+  template:
+    metadata:
+      # This label is used by the Service's selector to find this pod
+      labels:
+        app: todo-frontend
+    spec:
+      containers:
+      - name: todo-frontend-container
+        image: docker0y4sh/todo-frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+# --- Ingress ---
+# This is the main entry point. It directs traffic based on the URL path.
+# This version is configured for direct IP access (no domain name).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: todo-app-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      # Rule 1: If the path starts with /api...
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            # ...send traffic to the backend service on its port.
+            name: todo-backend-service
+            port:
+              number: 8080
+      # Rule 2: For all other paths (/)...
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            # ...send traffic to the frontend service on its port.
+            name: todo-frontend-service
+            port:
+              number: 80
