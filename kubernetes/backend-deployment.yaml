@@ -21,51 +21,34 @@ spec:
         image: docker0y4sh/todo-backend:latest
         imagePullPolicy: Always
         
-        # --- Environment variables to connect to the database ---
-        # This whole section is specific to the backend.
-        env:
-        - name: DB_USERNAME
-          valueFrom:
-            secretKeyRef:
-              # IMPORTANT: Ensure this is the correct name of your secret!
-              # In previous messages, it was 'postgresql-credentials'.
-              name: my-postgresql-credentials 
-              key: username
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: my-postgresql-credentials
-              key: password
-        - name: DB_HOST
-          value: my-postgresql-rw.default.svc.cluster.local
-        - name: DB_PORT
-          value: "5432"
-        - name: DB_NAME
-          value: goals_database # Or whatever your DB is named
-          
+        # --- The 'env' section for the database can be added in future ---
+        
         ports:
         # The port your Go Gin application listens on.
         - containerPort: 8080
         
         # --- Health Checks for the Go Application ---
+        # It's good practice to keep these. Your Go app should have a
+        # simple /health endpoint that just returns a 200 OK status.
         readinessProbe:
           httpGet:
-            path: /health # Your Go app must have a GET /health endpoint
+            path: /api/health # You should create this simple endpoint in Go
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 10
         livenessProbe:
           httpGet:
-            path: /health
+            path: /api/health
             port: 8080
           initialDelaySeconds: 15
           periodSeconds: 20
             
         # --- Resource allocation for the Go backend ---
+        # The resource requests can be lower now since there is no database connection pool.
         resources:
           requests:
-            memory: "350Mi"
-            cpu: "250m"
+            memory: "128Mi"
+            cpu: "100m"
           limits:
-            memory: "500Mi"
-            cpu: "500m"
+            memory: "256Mi"
+            cpu: "250m"
