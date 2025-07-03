@@ -1,0 +1,28 @@
+# Use version 3.8 of the Docker Compose file format
+version: '3.8'
+
+# Define the services (containers) for our application
+services:
+  # The Go backend service
+  backend:
+    build:
+      context: ./go-todo-backend  # The directory containing the backend's Dockerfile
+      dockerfile: Dockerfile
+    image: docker0y4sh/todo-backend:latest
+    ports:
+      # Map port 8080 on the host to port 8080 in the container
+      - "8080:8080"
+    restart: always
+
+  # The Svelte frontend service
+  frontend:
+    build:
+      context: ./go-todo-frontend # The directory containing the frontend's Dockerfile
+      dockerfile: Dockerfile
+    image: docker0y4sh/todo-frontend:latest
+    ports:
+      # Map port 5173 on the host to port 80 in the container (where Nginx is running)
+      - "5173:80"
+    depends_on:
+      - backend                 # This tells Docker to start the backend before the frontend
+    restart: always

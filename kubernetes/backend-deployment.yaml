@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Specific name for the backend deployment
+  name: todo-backend-deployment
+spec:
+  replicas: 1
+  selector:
+    # This selector finds the pods that this deployment manages.
+    matchLabels:
+      app: todo-backend
+  template:
+    metadata:
+      # Pods created by this deployment will get this label.
+      labels:
+        app: todo-backend
+    spec:
+      containers:
+      - name: todo-backend-container
+        # The Docker image for your Go backend application.
+        image: docker0y4sh/todo-backend:latest
+        imagePullPolicy: Always
+        
+        # --- Environment variables to connect to the database ---
+        # This whole section is specific to the backend.
+        env:
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              # IMPORTANT: Ensure this is the correct name of your secret!
+              # In previous messages, it was 'postgresql-credentials'.
+              name: my-postgresql-credentials 
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: my-postgresql-credentials
+              key: password
+        - name: DB_HOST
+          value: my-postgresql-rw.default.svc.cluster.local
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: goals_database # Or whatever your DB is named
+          
+        ports:
+        # The port your Go Gin application listens on.
+        - containerPort: 8080
+        
+        # --- Health Checks for the Go Application ---
+        readinessProbe:
+          httpGet:
+            path: /health # Your Go app must have a GET /health endpoint
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+            
+        # --- Resource allocation for the Go backend ---
+        resources:
+          requests:
+            memory: "350Mi"
+            cpu: "250m"
+          limits:
+            memory: "500Mi"
+            cpu: "500m"

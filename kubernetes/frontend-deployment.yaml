@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Specific name for the frontend deployment
+  name: todo-frontend-deployment
+spec:
+  replicas: 1
+  selector:
+    # This selector finds the frontend pods.
+    matchLabels:
+      app: todo-frontend
+  template:
+    metadata:
+      # Pods created by this deployment will get this label.
+      labels:
+        app: todo-frontend
+    spec:
+      containers:
+      - name: todo-frontend-container
+        # The Docker image for your Svelte/Nginx frontend.
+        image: docker0y4sh/todo-frontend:latest
+        imagePullPolicy: Always
+        
+        ports:
+        # The port the Nginx server listens on inside the container.
+        - containerPort: 80
+
+        # Note: We do not need database env variables here.
+        
+        # Note: A simple readiness probe for Nginx. It just checks if the web server is running.
+        readinessProbe:
+          httpGet:
+            path: / # Check if the root path is being served
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        
+        # --- Resource allocation for the Nginx frontend ---
+        # This is much lower as it's just serving static files.
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "64Mi"
+            cpu: "100m"

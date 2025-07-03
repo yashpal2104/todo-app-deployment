@@ -1,0 +1,34 @@
+# kubernetes/05-ingress.yml (IP-based access version)
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: todo-app-ingress
+spec:
+  # The 'rules' section defines how to route traffic.
+  # Since we are NOT specifying a 'host', this rule will apply to
+  # any and all traffic coming to the Ingress controller's IP address.
+  rules:
+  - http:
+      paths:
+      # --- Rule 1: The API Backend ---
+      # If the URL path starts with /api...
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            # ...route it to our backend service.
+            name: todo-backend-service
+            port:
+              number: 8080
+
+      # --- Rule 2: The Frontend Application ---
+      # This is the "catch-all" rule for any other path.
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            # ...route it to our frontend service.
+            name: todo-frontend-service
+            port:
+              number: 80
